@@ -199,8 +199,10 @@ app.post('/api/config', async (req, res) => {
     // otherwise pin the repo's default branch so later commits are
     // deterministic. A repo change with no explicit branch resets to the
     // new repo's default.
+    const repoChanged = existing !== null && existing.github.repo !== `${owner}/${repo}`;
     const explicitBranch = (req.body as Partial<CinephileConfig>)?.github?.branch?.trim();
-    const branch = explicitBranch || gh.defaultBranch || 'main';
+    const carriedBranch = !repoChanged ? merged.github?.branch?.trim() : '';
+    const branch = explicitBranch || carriedBranch || gh.defaultBranch || 'main';
     const full: CinephileConfig = {
       github: { token: merged.github.token!, repo: `${owner}/${repo}`, branch },
       commitAuthor: {
