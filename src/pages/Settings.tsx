@@ -71,9 +71,11 @@ export function SettingsPage() {
           <h1>Settings</h1>
         </div>
         <div className="alert alert-info">
-          <strong>Demo mode is on</strong> (<code>CINEPHILE_DEMO=1</code>) — the app is running on
-          fixture data. No credentials are needed and no real commits are made. Restart without the
-          flag to connect your own GitHub repo and TMDB key.
+          <strong>Demo mode — fixture data, not your collection.</strong> The app is running with{' '}
+          <code>CINEPHILE_DEMO=1</code>: search results, the library, and the cupboard all come from
+          bundled demo data, and marking watched makes <strong>no real commits</strong>. Restart
+          without the flag and configure your GitHub repo + TMDB key below to track your real
+          watches.
         </div>
       </div>
     );
@@ -115,10 +117,15 @@ export function SettingsPage() {
               onChange={(e) => set({ token: e.target.value })}
               autoComplete="off"
             />
-            {errors['github.token'] ? <em className="field-error">{errors['github.token']}</em> : (
+            {errors['github.token'] ? (
+              <em className="field-error">{errors['github.token']}</em>
+            ) : (
               <em className="field-help">
-                Create one at <a href={TOKEN_HELP} target="_blank" rel="noreferrer">github.com/settings/tokens</a> — the
-                classic <code>repo</code> scope is enough.
+                Create one at{' '}
+                <a href={TOKEN_HELP} target="_blank" rel="noreferrer">
+                  github.com/settings/tokens
+                </a>{' '}
+                — the classic <code>repo</code> scope is enough.
               </em>
             )}
           </label>
@@ -177,10 +184,15 @@ export function SettingsPage() {
               onChange={(e) => set({ apiKey: e.target.value })}
               autoComplete="off"
             />
-            {errors['tmdb.apiKey'] ? <em className="field-error">{errors['tmdb.apiKey']}</em> : (
+            {errors['tmdb.apiKey'] ? (
+              <em className="field-error">{errors['tmdb.apiKey']}</em>
+            ) : (
               <em className="field-help">
-                Free key at <a href={TMDB_HELP} target="_blank" rel="noreferrer">themoviedb.org/settings/api</a> (v3 API
-                key, or a v4 read access token).
+                Free key at{' '}
+                <a href={TMDB_HELP} target="_blank" rel="noreferrer">
+                  themoviedb.org/settings/api
+                </a>{' '}
+                (v3 API key, or a v4 read access token).
               </em>
             )}
           </label>

@@ -159,12 +159,14 @@ export interface GithubValidation {
 
 /**
  * Validate a token + repo pair: token authenticates (whoami), the repo
- * exists, and the token can push to it. Returns the default branch.
+ * exists, the token can push to it, and (when given) the branch exists.
+ * Returns the default branch.
  */
 export async function validateGithubCredentials(
   token: string,
   owner: string,
   repo: string,
+  branch?: string,
 ): Promise<GithubValidation> {
   let login: string;
   try {
@@ -174,9 +176,17 @@ export async function validateGithubCredentials(
     return { ok: false, error: `GitHub token check failed: ${errorMessage(err)}` };
   }
   try {
-    const info = await new GitHubClient(token).getRepo(owner, repo);
+    const client = new GitHubClient(token);
+    const info = await client.getRepo(owner, repo);
     if (info.permissions && !info.permissions.push) {
       return { ok: false, error: `Token cannot push to ${owner}/${repo} (needs repo write access).` };
+    }
+    if (branch && branch !== info.default_branch) {
+      try {
+        await client.getRefHead(owner, repo, branch);
+      } catch {
+        return { ok: false, error: `Branch "${branch}" does not exist on ${owner}/${repo}.` };
+      }
     }
     return {
       ok: true,

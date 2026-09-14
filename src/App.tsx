@@ -1,6 +1,7 @@
-import { lazy, Suspense, useEffect } from 'react';
-import { NavLink, Route, Routes } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './AppContext.js';
+import { HomePage } from './pages/Home.js';
 import { SearchPage } from './pages/Search.js';
 import { DetailPage } from './pages/Detail.js';
 import { LibraryPage } from './pages/Library.js';
@@ -19,16 +20,31 @@ export default function App() {
 
 function Shell() {
   const { config, configLoading, toasts, dismissToast } = useApp();
+  const [scrolled, setScrolled] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Reset scroll on navigation so each page starts at the top.
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [location.pathname]);
 
   if (configLoading) {
     return <div className="boot">cinephile</div>;
   }
 
   const unconfigured = config && !config.configured;
+  const overHero = location.pathname === '/' && !scrolled;
 
   return (
     <div className="app">
-      <header className="topbar">
+      <header className={`topbar ${overHero ? 'topbar-transparent' : ''}`}>
         <NavLink to="/" className="brand">
           <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
             <rect width="32" height="32" rx="7" fill="#161b22" />
@@ -43,6 +59,9 @@ function Shell() {
         </NavLink>
         <nav className="nav">
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'nav-active' : '')}>
+            Home
+          </NavLink>
+          <NavLink to="/search" className={({ isActive }) => (isActive ? 'nav-active' : '')}>
             Search
           </NavLink>
           <NavLink to="/library" className={({ isActive }) => (isActive ? 'nav-active' : '')}>
@@ -59,15 +78,23 @@ function Shell() {
 
       <main className="main">
         <Routes>
-          <Route path="/" element={unconfigured ? <RedirectSettings /> : <SearchPage />} />
+          <Route path="/" element={unconfigured ? <RedirectSettings /> : <HomePage />} />
+          <Route path="/search" element={unconfigured ? <RedirectSettings /> : <SearchPage />} />
           <Route path="/movie/:id" element={<DetailPage type="movie" />} />
           <Route path="/tv/:id" element={<DetailPage type="tv" />} />
           <Route path="/library" element={unconfigured ? <RedirectSettings /> : <LibraryPage />} />
-          <Route path="/cupboard" element={unconfigured ? <RedirectSettings /> : (
-            <Suspense fallback={<div className="loading">Loading cupboard…</div>}>
-              <CupboardPage />
-            </Suspense>
-          )} />
+          <Route
+            path="/cupboard"
+            element={
+              unconfigured ? (
+                <RedirectSettings />
+              ) : (
+                <Suspense fallback={<div className="loading">Loading cupboard…</div>}>
+                  <CupboardPage />
+                </Suspense>
+              )
+            }
+          />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<RedirectSettings />} />
         </Routes>

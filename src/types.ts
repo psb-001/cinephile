@@ -21,6 +21,7 @@ export interface TmdbSearchResult {
   title: string;
   year: number | null;
   poster_path: string | null;
+  backdrop_path: string | null;
   overview: string;
 }
 
@@ -60,7 +61,20 @@ export interface TmdbSeason {
   name: string;
   air_date: string | null;
   overview: string;
+  episode_count: number;
   episodes: TmdbEpisode[];
+}
+
+export interface HomeRow {
+  id: string;
+  title: string;
+  items: TmdbSearchResult[];
+}
+
+export interface HomeFeed {
+  /** Hero candidates (backdrops + overviews), richest first. */
+  hero: TmdbSearchResult[];
+  rows: HomeRow[];
 }
 
 export interface ConfigStatus {

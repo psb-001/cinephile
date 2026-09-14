@@ -5,7 +5,7 @@
  * up GitHub or TMDB credentials. Watch actions succeed against an
  * in-memory library; no commits are made anywhere.
  */
-import type { TmdbDetail, TmdbSearchResult, TmdbSeason } from './tmdb.js';
+import type { HomeFeedData, TmdbDetail, TmdbSearchResult, TmdbSeason } from './tmdb.js';
 import type { WatchedEntry } from './types.js';
 
 interface DemoItem {
@@ -319,8 +319,35 @@ export function demoSearch(query: string): TmdbSearchResult[] {
     title: i.title,
     year: i.year,
     poster_path: null,
+    backdrop_path: null,
     overview: i.overview,
   }));
+}
+
+export function demoHome(): HomeFeedData {
+  const toResult = (i: DemoItem): TmdbSearchResult => ({
+    id: i.id,
+    media_type: i.type,
+    title: i.title,
+    year: i.year,
+    poster_path: null,
+    backdrop_path: null,
+    overview: i.overview,
+  });
+  const movies = DEMO_ITEMS.filter((i) => i.type === 'movie');
+  const shows = DEMO_ITEMS.filter((i) => i.type === 'tv');
+  return {
+    hero: movies.slice(0, 6).map(toResult),
+    rows: [
+      { id: 'demo-movies', title: 'Demo Movies', items: movies.map(toResult) },
+      { id: 'demo-series', title: 'Demo Series', items: shows.map(toResult) },
+      {
+        id: 'demo-top',
+        title: 'Demo Essentials',
+        items: movies.slice().reverse().map(toResult),
+      },
+    ],
+  };
 }
 
 export function demoMovieDetail(id: number): TmdbDetail | null {

@@ -81,6 +81,31 @@ export interface ConfigValidationResult {
 }
 
 /**
+ * Merge a submitted settings form with the stored config.
+ *
+ * Secrets (GitHub token, TMDB key) are "leave blank to keep current": a
+ * blank value keeps the stored one so the user can update just their TMDB
+ * key (or just the repo/author) without re-entering credentials they
+ * already saved. Non-secret fields always take the submitted value.
+ */
+export function mergeConfigForSave(
+  existing: CinephileConfig | null,
+  submitted: Partial<CinephileConfig>,
+): CinephileConfig {
+  const token = submitted?.github?.token?.trim() || existing?.github?.token || '';
+  const repo = submitted?.github?.repo?.trim() || existing?.github?.repo || '';
+  const branch = submitted?.github?.branch?.trim() || existing?.github?.branch || '';
+  const name = submitted?.commitAuthor?.name?.trim() || existing?.commitAuthor?.name || '';
+  const email = submitted?.commitAuthor?.email?.trim() || existing?.commitAuthor?.email || '';
+  const apiKey = submitted?.tmdb?.apiKey?.trim() || existing?.tmdb?.apiKey || '';
+  return {
+    github: { token, repo, branch: branch || undefined },
+    commitAuthor: { name, email },
+    tmdb: { apiKey },
+  };
+}
+
+/**
  * Field-level shape validation (no network). Returns errors keyed by field
  * path: github.token, github.repo, commitAuthor.name, commitAuthor.email,
  * tmdb.apiKey.

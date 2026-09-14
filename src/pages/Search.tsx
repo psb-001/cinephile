@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { PosterCard } from '../components/PosterCard.js';
 import type { TmdbSearchResult } from '../types.js';
 
-const TRENDING_HINTS = ['Inception', 'Breaking Bad', 'Parasite', 'The Matrix', 'Chernobyl'];
+const HINTS = ['Inception', 'Breaking Bad', 'Parasite', 'The Matrix', 'Chernobyl'];
 
 export function SearchPage() {
-  const [query, setQuery] = useState('');
+  const [params, setParams] = useSearchParams();
+  const [query, setQuery] = useState(params.get('q') ?? '');
   const [results, setResults] = useState<TmdbSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searched, setSearched] = useState(false);
+  const [searched, setSearched] = useState(Boolean(params.get('q')));
   const debounceRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -20,6 +22,7 @@ export function SearchPage() {
       setResults([]);
       setSearched(false);
       setError(null);
+      if (params.get('q')) setParams({}, { replace: true });
       return;
     }
     debounceRef.current = window.setTimeout(async () => {
@@ -29,6 +32,7 @@ export function SearchPage() {
         const { results } = await api.search(q);
         setResults(results);
         setSearched(true);
+        setParams({ q }, { replace: true });
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
         setResults([]);
@@ -39,20 +43,16 @@ export function SearchPage() {
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
-
-  const hintButtons = useMemo(() => TRENDING_HINTS, []);
 
   return (
     <div className="page search-page">
-      <section className="hero">
+      <section className="search-hero">
         <h1>
-          Watch something? <span className="accent">Commit it.</span>
+          Find something <span className="accent">great</span>
         </h1>
-        <p className="hero-sub">
-          Every movie or episode you mark watched makes exactly one commit to your GitHub repo —
-          and lights up a green square on your profile.
-        </p>
+        <p className="hero-sub">Search movies and series, mark them watched, light up your graph.</p>
         <div className="search-box">
           <svg className="search-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
             <path
@@ -72,26 +72,33 @@ export function SearchPage() {
             aria-label="Search movies and series"
           />
         </div>
-        {!query && (
+        {!query ? (
           <div className="hero-hints">
             <span>Try:</span>
-            {hintButtons.map((h) => (
+            {HINTS.map((h) => (
               <button key={h} className="chip" onClick={() => setQuery(h)}>
                 {h}
               </button>
             ))}
           </div>
-        )}
+        ) : null}
       </section>
 
       {error ? <div className="alert alert-error">{error}</div> : null}
-      {loading ? <div className="loading">Searching…</div> : null}
+
+      {loading ? (
+        <div className="poster-grid">
+          {Array.from({ length: 12 }, (_, i) => (
+            <div key={i} className="skeleton skeleton-card" />
+          ))}
+        </div>
+      ) : null}
 
       {!loading && query && !error && results.length === 0 ? (
         <div className="empty">No results for “{query}”.</div>
       ) : null}
 
-      {results.length > 0 ? (
+      {!loading && results.length > 0 ? (
         <div className="poster-grid">
           {results.map((r) => (
             <PosterCard
@@ -108,28 +115,7 @@ export function SearchPage() {
       ) : null}
 
       {!searched && !query ? (
-        <div className="search-landing">
-          <div className="landing-cards">
-            <div className="landing-card">
-              <span className="landing-num">1</span>
-              <h3>Find it</h3>
-              <p>Search millions of movies and series via TMDB.</p>
-            </div>
-            <div className="landing-card">
-              <span className="landing-num">2</span>
-              <h3>Mark it watched</h3>
-              <p>
-                One commit per movie. One commit <em>per episode</em> — a 10-episode binge is 10
-                commits.
-              </p>
-            </div>
-            <div className="landing-card">
-              <span className="landing-num">3</span>
-              <h3>Shelf it</h3>
-              <p>Your watches become blu-ray cases on the 3D cupboard shelf.</p>
-            </div>
-          </div>
-        </div>
+        <div className="empty">Type to search TMDB’s catalog of movies and series.</div>
       ) : null}
     </div>
   );

@@ -13,7 +13,7 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { configPath, loadConfig, redactConfig, saveConfig, validateConfigShape, type CinephileConfig } from './config.js';
+import { configPath, loadConfig, mergeConfigForSave, redactConfig, saveConfig, validateConfigShape, type CinephileConfig } from './config.js';
 import {
   errorMessage,
   GitHubClient,
@@ -24,6 +24,7 @@ import { TmdbClient } from './tmdb.js';
 import {
   demoAppendEntry,
   demoFakeSha,
+  demoHome,
   demoLibraryEntries,
   demoMovieDetail,
   demoSearch,
@@ -137,20 +138,22 @@ app.post('/api/config/validate', async (req, res) => {
     res.json({ ok: true, errors: {}, github: { login: 'demo', repoFullName: 'demo/demo', defaultBranch: 'main' } });
     return;
   }
-  const candidate = req.body as Partial<CinephileConfig>;
-  const shapeErrors = validateConfigShape(candidate);
+  // Merge with the stored config first: blank secrets mean "keep current",
+  // so the user can validate an update without re-entering credentials.
+  const merged = mergeConfigForSave(loadConfig(), req.body as Partial<CinephileConfig>);
+  const shapeErrors = validateConfigShape(merged);
   if (Object.keys(shapeErrors).length > 0) {
     res.status(400).json({ ok: false, errors: shapeErrors });
     return;
   }
   try {
-    const { owner, repo } = parseRepoSlug(candidate.github!.repo!);
-    const gh = await validateGithubCredentials(candidate.github!.token!, owner, repo);
+    const { owner, repo } = parseRepoSlug(merged.github.repo!);
+    const gh = await validateGithubCredentials(merged.github.token!, owner, repo, merged.github.branch);
     if (!gh.ok) {
       res.status(400).json({ ok: false, errors: { 'github.repo': gh.error ?? 'GitHub validation failed.' } });
       return;
     }
-    const tmdb = await new TmdbClient(candidate.tmdb!.apiKey!).validate();
+    const tmdb = await new TmdbClient(merged.tmdb.apiKey!).validate();
     if (!tmdb.ok) {
       res.status(400).json({ ok: false, errors: { 'tmdb.apiKey': tmdb.error ?? 'TMDB validation failed.' } });
       return;
@@ -170,35 +173,44 @@ app.post('/api/config', async (req, res) => {
     res.json({ ok: true, saved: true, github: { login: 'demo', repoFullName: 'demo/demo', defaultBranch: 'main' } });
     return;
   }
-  const candidate = req.body as Partial<CinephileConfig>;
-  const shapeErrors = validateConfigShape(candidate);
+  // Merge with the stored config first: blank secrets mean "keep current",
+  // so the user can add just their TMDB key (or change the repo/author)
+  // without re-entering credentials they already saved.
+  const existing = loadConfig();
+  const merged = mergeConfigForSave(existing, req.body as Partial<CinephileConfig>);
+  const shapeErrors = validateConfigShape(merged);
   if (Object.keys(shapeErrors).length > 0) {
     res.status(400).json({ ok: false, errors: shapeErrors });
     return;
   }
   try {
-    const { owner, repo } = parseRepoSlug(candidate.github!.repo!);
-    const gh = await validateGithubCredentials(candidate.github!.token!, owner, repo);
+    const { owner, repo } = parseRepoSlug(merged.github.repo!);
+    const gh = await validateGithubCredentials(merged.github.token!, owner, repo, merged.github.branch);
     if (!gh.ok) {
       res.status(400).json({ ok: false, errors: { 'github.repo': gh.error ?? 'GitHub validation failed.' } });
       return;
     }
-    const tmdb = await new TmdbClient(candidate.tmdb!.apiKey!).validate();
+    const tmdb = await new TmdbClient(merged.tmdb.apiKey!).validate();
     if (!tmdb.ok) {
       res.status(400).json({ ok: false, errors: { 'tmdb.apiKey': tmdb.error ?? 'TMDB validation failed.' } });
       return;
     }
     // Resolve and pin the branch: use the explicit branch if provided,
     // otherwise pin the repo's default branch so later commits are
-    // deterministic.
-    const branch = candidate.github!.branch?.trim() || gh.defaultBranch || 'main';
+    // deterministic. A repo change with no explicit branch resets to the
+    // new repo's default.
+    const repoChanged = existing !== null && existing.github.repo !== `${owner}/${repo}`;
+    const branch =
+      !repoChanged && merged.github?.branch?.trim()
+        ? merged.github.branch.trim()
+        : gh.defaultBranch || 'main';
     const full: CinephileConfig = {
-      github: { token: candidate.github!.token!.trim(), repo: `${owner}/${repo}`, branch },
+      github: { token: merged.github.token!, repo: `${owner}/${repo}`, branch },
       commitAuthor: {
-        name: candidate.commitAuthor!.name!.trim(),
-        email: candidate.commitAuthor!.email!.trim(),
+        name: merged.commitAuthor!.name!,
+        email: merged.commitAuthor!.email!,
       },
-      tmdb: { apiKey: candidate.tmdb!.apiKey!.trim() },
+      tmdb: { apiKey: merged.tmdb.apiKey! },
     };
     saveConfig(full);
     libraryCache = null;
@@ -210,6 +222,20 @@ app.post('/api/config', async (req, res) => {
 
 // ---------------------------------------------------------------------------
 // TMDB proxy (keeps the API key server-side)
+
+app.get('/api/tmdb/home', requireSetup, async (_req, res) => {
+  try {
+    if (DEMO) {
+      res.json(demoHome());
+      return;
+    }
+    const setup = res.locals.setup as ResolvedSetup;
+    const tmdb = new TmdbClient(setup.config.tmdb.apiKey);
+    res.json(await tmdb.home());
+  } catch (err) {
+    res.status(502).json({ error: errorMessage(err) });
+  }
+});
 
 app.get('/api/tmdb/search', requireSetup, async (req, res) => {
   const q = String(req.query.q ?? '').trim();

@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useApp } from '../AppContext.js';
-import { useWatchState, toIsoWatchedAt, reportWatchResult, WatchControls } from '../components/WatchForm.js';
+import { toIsoWatchedAt, reportWatchResult, useWatchState, WatchControls } from '../components/WatchForm.js';
 import { coverCss } from '../lib/covers.js';
-import { formatWatchedDate, tmdbImageUrl } from '../types.js';
+import { tmdbImageUrl } from '../types.js';
 import type { TmdbDetail, TmdbEpisode, TmdbSeason } from '../types.js';
 
 export function DetailPage({ type }: { type: 'movie' | 'tv' }) {
@@ -41,7 +41,12 @@ export function DetailPage({ type }: { type: 'movie' | 'tv' }) {
     };
   }, [type, numericId]);
 
-  if (loading) return <div className="page"><div className="loading">Loading…</div></div>;
+  if (loading)
+    return (
+      <div className="page">
+        <div className="skeleton skeleton-hero" />
+      </div>
+    );
   if (error)
     return (
       <div className="page">
@@ -55,7 +60,16 @@ export function DetailPage({ type }: { type: 'movie' | 'tv' }) {
 
   return (
     <div className="page detail-page">
-      <div className="detail-backdrop" style={backdropUrl ? { backgroundImage: `url(${backdropUrl})` } : { background: coverCss(detail.title) }} />
+      <div
+        className="detail-backdrop"
+        style={
+          backdropUrl
+            ? { backgroundImage: `url(${backdropUrl})` }
+            : { background: coverCss(detail.title) }
+        }
+      />
+      <div className="detail-scrim" />
+
       <div className="detail-head">
         <div className="detail-poster">
           {posterUrl && !posterFailed ? (
@@ -78,7 +92,9 @@ export function DetailPage({ type }: { type: 'movie' | 'tv' }) {
           {detail.genres.length > 0 ? (
             <div className="detail-genres">
               {detail.genres.map((g) => (
-                <span key={g} className="chip">{g}</span>
+                <span key={g} className="chip">
+                  {g}
+                </span>
               ))}
             </div>
           ) : null}
@@ -154,15 +170,17 @@ function MarkMovieWatched({
         onWatchedAtChange={watch.setWatchedAt}
         onRatingChange={watch.setRating}
       />
-      <button className="btn btn-primary" onClick={markWatched} disabled={watch.busy}>
-        {watch.busy ? 'Committing…' : 'Mark watched — 1 commit'}
-      </button>
+      <div className="watch-actions">
+        <button className="btn btn-primary btn-lg" onClick={markWatched} disabled={watch.busy}>
+          {watch.busy ? 'Committing…' : 'Mark watched — 1 commit'}
+        </button>
+        {watched ? (
+          <span className="badge badge-watched">In your library — marking again records a rewatch</span>
+        ) : null}
+      </div>
       <p className="commit-preview">
         Commit: <code>Watched: {detail.title}{detail.year ? ` (${detail.year})` : ''}</code>
       </p>
-      {watched ? (
-        <p className="watched-note">Already in your library — marking again records a rewatch.</p>
-      ) : null}
     </div>
   );
 }
@@ -187,10 +205,12 @@ function SeriesWatchPanel({
   const [seasonError, setSeasonError] = useState<string | null>(null);
 
   const seasons = useMemo(
-    () => detail.seasons.filter((s) => s.season_number > 0 || s.season_number === 0 && s.episode_count > 0),
+    () => detail.seasons.filter((s) => s.season_number > 0 || (s.season_number === 0 && s.episode_count > 0)),
     [detail.seasons],
   );
 
+  // Reset the season panel when navigating between series (routes reuse
+  // DetailPage, so component state would otherwise persist).
   useEffect(() => {
     setSeasonNumber(null);
     setSeason(null);
@@ -277,7 +297,9 @@ function SeriesWatchPanel({
       } else if (result.succeeded > 0) {
         pushToast({
           kind: 'error',
-          message: `Partial: ${result.succeeded}/${result.total} commits created. ${result.results.find((r) => !r.ok)?.error ?? ''}`,
+          message: `Partial: ${result.succeeded}/${result.total} commits created. ${
+            result.results.find((r) => !r.ok)?.error ?? ''
+          }`,
         });
       } else {
         pushToast({
@@ -342,7 +364,10 @@ function SeriesWatchPanel({
                 </button>
               </div>
               <p className="commit-preview">
-                Each episode is its own commit: <code>Watched: {detail.title} S{String(season.season_number).padStart(2, '0')}E01 - …</code>
+                Each episode is its own commit:{' '}
+                <code>
+                  Watched: {detail.title} S{String(season.season_number).padStart(2, '0')}E01 - …
+                </code>
               </p>
 
               <ul className="episode-list">

@@ -19,9 +19,7 @@ export function LibraryPage() {
     const q = query.trim().toLowerCase();
     if (q) {
       list = list.filter(
-        (e) =>
-          e.title.toLowerCase().includes(q) ||
-          (e.episode_title ?? '').toLowerCase().includes(q),
+        (e) => e.title.toLowerCase().includes(q) || (e.episode_title ?? '').toLowerCase().includes(q),
       );
     }
     if (filter === 'movie') list = list.filter((e) => e.type === 'movie');
@@ -42,7 +40,8 @@ export function LibraryPage() {
   const stats = useMemo(() => {
     const movies = library.filter((e) => e.type === 'movie').length;
     const episodes = library.filter((e) => e.type === 'tv').length;
-    return { movies, episodes, total: library.length };
+    const commits = library.length; // one commit per watch — that's the mechanic
+    return { movies, episodes, commits };
   }, [library]);
 
   return (
@@ -50,10 +49,20 @@ export function LibraryPage() {
       <div className="page-head">
         <h1>Library</h1>
         <p className="page-sub">
-          {stats.total} watch{stats.total === 1 ? '' : 'es'} · {stats.movies} movie{stats.movies === 1 ? '' : 's'} ·{' '}
-          {stats.episodes} episode{stats.episodes === 1 ? '' : 's'} — read straight from your repo’s
-          <code> watched.jsonl</code>
+          Read straight from your repo’s <code>watched.jsonl</code> — every line below is one commit
+          on your GitHub profile.
         </p>
+        <div className="stat-chips">
+          <span className="chip">
+            <strong>{stats.commits}</strong> commits
+          </span>
+          <span className="chip">
+            <strong>{stats.movies}</strong> movies
+          </span>
+          <span className="chip">
+            <strong>{stats.episodes}</strong> episodes
+          </span>
+        </div>
       </div>
 
       {libraryError ? (
@@ -75,11 +84,7 @@ export function LibraryPage() {
         />
         <div className="segmented">
           {(['all', 'movie', 'tv'] as Filter[]).map((f) => (
-            <button
-              key={f}
-              className={filter === f ? 'segmented-active' : ''}
-              onClick={() => setFilter(f)}
-            >
+            <button key={f} className={filter === f ? 'segmented-active' : ''} onClick={() => setFilter(f)}>
               {f === 'all' ? 'All' : f === 'movie' ? 'Movies' : 'Episodes'}
             </button>
           ))}
@@ -101,7 +106,10 @@ export function LibraryPage() {
 
       <ul className="library-list">
         {entries.map((e, i) => (
-          <LibraryRow key={`${e.type}-${e.tmdb_id}-${e.season ?? ''}-${e.episode ?? ''}-${e.watched_at}-${i}`} entry={e} />
+          <LibraryRow
+            key={`${e.type}-${e.tmdb_id}-${e.season ?? ''}-${e.episode ?? ''}-${e.watched_at}-${i}`}
+            entry={e}
+          />
         ))}
       </ul>
     </div>
@@ -137,7 +145,11 @@ function LibraryRow({ entry }: { entry: WatchedEntry }) {
         ) : null}
       </div>
       <div className="library-meta">
-        {entry.rating ? <span className="rating-badge">★ {entry.rating}</span> : <span className="rating-muted">unrated</span>}
+        {entry.rating ? (
+          <span className="rating-badge">★ {entry.rating}</span>
+        ) : (
+          <span className="rating-muted">unrated</span>
+        )}
         <span className="watched-date">{formatWatchedDate(entry.watched_at)}</span>
       </div>
     </li>

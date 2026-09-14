@@ -13,7 +13,19 @@ export interface TmdbSearchResult {
   title: string;
   year: number | null;
   poster_path: string | null;
+  backdrop_path: string | null;
   overview: string;
+}
+
+export interface HomeRowData {
+  id: string;
+  title: string;
+  items: TmdbSearchResult[];
+}
+
+export interface HomeFeedData {
+  hero: TmdbSearchResult[];
+  rows: HomeRowData[];
 }
 
 export interface TmdbEpisode {
@@ -112,6 +124,7 @@ export class TmdbClient {
         release_date?: string;
         first_air_date?: string;
         poster_path: string | null;
+        backdrop_path: string | null;
         overview: string;
       }>;
       total_results: number;
@@ -124,9 +137,76 @@ export class TmdbClient {
         title: (r.title ?? r.name ?? '').trim(),
         year: parseYear(r.release_date ?? r.first_air_date),
         poster_path: r.poster_path,
+        backdrop_path: r.backdrop_path,
         overview: r.overview ?? '',
       }));
     return { results, total_results: data.total_results ?? results.length };
+  }
+
+  private async list(
+    path: string,
+    type: 'movie' | 'tv',
+    params: Record<string, string> = {},
+  ): Promise<TmdbSearchResult[]> {
+    const data = await this.request<{
+      results: Array<{
+        id: number;
+        title?: string;
+        name?: string;
+        release_date?: string;
+        first_air_date?: string;
+        poster_path: string | null;
+        backdrop_path: string | null;
+        overview: string;
+      }>;
+    }>(path, params);
+    return (data.results ?? []).map((r) => ({
+      id: r.id,
+      media_type: type,
+      title: (r.title ?? r.name ?? '').trim(),
+      year: parseYear(r.release_date ?? r.first_air_date),
+      poster_path: r.poster_path,
+      backdrop_path: r.backdrop_path,
+      overview: r.overview ?? '',
+    }));
+  }
+
+  /** Home feed: hero candidates plus the content rows. */
+  async home(): Promise<HomeFeedData> {
+    const [trendingMovies, trendingTv, popularMovies, topRated, popularTv] = await Promise.all([
+      this.list('/trending/movie/week', 'movie'),
+      this.list('/trending/tv/week', 'tv'),
+      this.list('/movie/popular', 'movie'),
+      this.list('/movie/top_rated', 'movie'),
+      this.list('/tv/popular', 'tv'),
+    ]);
+    const seen = new Set<string>();
+    const dedupe = (items: TmdbSearchResult[]) =>
+      items.filter((i) => {
+        const key = `${i.media_type}:${i.id}`;
+        if (seen.has(key) || !i.title) return false;
+        seen.add(key);
+        return true;
+      });
+    const rows: HomeRowData[] = [
+      { id: 'trending-movies', title: 'Trending Movies', items: dedupe(trendingMovies) },
+      { id: 'trending-tv', title: 'Trending Series', items: dedupe(trendingTv) },
+      { id: 'popular-movies', title: 'Popular on TMDB', items: dedupe(popularMovies) },
+      { id: 'top-rated', title: 'Top Rated of All Time', items: dedupe(topRated) },
+      { id: 'popular-tv', title: 'Popular Series', items: dedupe(popularTv) },
+    ];
+    // Hero candidates: trending movies with backdrops first, then tv.
+    const heroSeen = new Set<string>();
+    const hero = [...trendingMovies, ...trendingTv]
+      .filter((i) => i.backdrop_path && i.overview)
+      .filter((i) => {
+        const key = `${i.media_type}:${i.id}`;
+        if (heroSeen.has(key)) return false;
+        heroSeen.add(key);
+        return true;
+      })
+      .slice(0, 6);
+    return { hero, rows: rows.filter((r) => r.items.length > 0) };
   }
 
   async movieDetail(id: number): Promise<TmdbDetail> {

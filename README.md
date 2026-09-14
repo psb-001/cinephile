@@ -2,22 +2,22 @@
 
 **A local, open-source watch tracker for movie lovers — every movie or episode you watch becomes a commit on your GitHub profile.**
 
-Developers get satisfying green contribution squares for writing code. Cinephiles who watch films and episodes every single day deserve the same reward. Mark a movie watched → exactly one commit. Binge a 10-episode season → exactly 10 commits, one per episode. Your GitHub profile turns into a watch diary, and your collection becomes a shelf of blu-ray cases.
+Developers get satisfying green contribution squares for writing code. Cinephiles who watch films and episodes every single day deserve the same reward. Mark a movie watched → exactly one commit. Binge a 10-episode season → exactly 10 commits, one per episode. Your GitHub profile turns into a watch diary, and your collection becomes a wall of blu-ray cases in your own Criterion-style closet.
 
-![Cupboard — your collection as 3D blu-ray cases](docs/screenshot-cupboard.png)
+![The Closet — your collection as blu-ray cases](docs/screenshot-cupboard.png)
 
-| Search & watch | Season fan-out |
+| Cinematic home | Series detail with season fan-out |
 | --- | --- |
-| ![Search](docs/screenshot-search.png) | ![Series detail](docs/screenshot-series.png) |
+| ![Home](docs/screenshot-home.png) | ![Series detail](docs/screenshot-series.png) |
 
 ## How it works
 
-1. **Find it** — search millions of movies and series via [TMDB](https://www.themoviedb.org/).
-2. **Mark it watched** — cinephile appends one line to `watched.jsonl` in *your* GitHub repo and creates exactly one commit on the default branch:
+1. **Find it** — browse the cinematic home feed (live TMDB trending rows) or search millions of movies and series.
+2. **Mark it watched** — cinephile appends one line to `watched.jsonl` in *your* GitHub repo and creates exactly one commit on the target branch:
    - Movie → `Watched: Inception (2010)` — 1 commit
    - Episode → `Watched: Breaking Bad S01E04 - Cancer Man` — 1 commit per episode, always
    - Whole season → N commits in episode order, **never squashed**. Bingeing *is* the point.
-3. **Shelf it** — the Cupboard page renders every watched movie and series as a blu-ray case on a 3D shelf (three.js / react-three-fiber), cover art and all. Hover or click a case for its details. The shelf grows as your collection does.
+3. **Shelf it** — the Closet page is a Criterion-Closet-inspired 3D room: warm wood shelving floor to ceiling, your collection packed spine-out like a wall of Criterion discs (spines colored from each film's artwork, numbered in watch order), with occasional face-out covers. Hover to pull a spine toward you; click to take the case off the shelf and read it. The closet grows as your collection does.
 
 Your repo is the **source of truth**: the app keeps no database. On startup it reads `watched.jsonl` back from the repo, so your library follows you anywhere the repo goes, and every entry is plain, diff-able JSON:
 
@@ -27,6 +27,16 @@ Your repo is the **source of truth**: the app keeps no database. On startup it r
 ```
 
 Watch dates default to *now*; pick a past date and the commit is authored with that date, backfilling the corresponding contribution square.
+
+## Architecture
+
+Three moving parts, deliberately separated:
+
+- **Server** (`server/`, Express + TypeScript) — the only component that touches credentials. It holds your GitHub token and TMDB key in a local gitignored `config.json`, validates them live (GitHub whoami + push access + branch existence, TMDB ping), performs every GitHub commit through the Git data API, and proxies TMDB searches so the key never reaches the browser.
+- **Client** (`src/`, React + Vite) — pure UI: home feed, search, detail pages, library, the 3D closet (react-three-fiber). It only ever talks to the local server over `/api`.
+- **The target repo** — the source of truth. `watched.jsonl` (one JSON line per watch) on the branch you configure is the entire database; the app derives all state from it on startup and after every watch.
+
+No accounts, no telemetry, no server-side storage beyond your own GitHub repo.
 
 ## Quickstart
 
@@ -46,9 +56,9 @@ Open http://localhost:5173 and fill in Settings:
 3. **Commit author name + email** — see the contribution-graph caveat below.
 4. **TMDB API key** — free; request one at [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api) (v3 key, or a v4 read token).
 
-Each credential is validated live (GitHub whoami + push access, TMDB ping) before saving. Then search, watch, and watch your graph turn green.
+Each credential is validated live before saving, with per-field errors shown inline. Saved secrets can be left blank on later edits — blank means *keep current*, so you can add or rotate just your TMDB key without re-entering the GitHub token. Then browse, watch, and watch your graph turn green.
 
-**No credentials handy?** Preview everything with fixtures:
+**No credentials handy?** Preview the whole UI — including the 3D closet — with bundled demo fixtures, clearly labeled as demo data (no real commits are made):
 
 ```bash
 CINEPHILE_DEMO=1 npm run dev
@@ -88,7 +98,7 @@ You can edit the file by hand, but the Settings page is the friendly path. Envir
 
 Cinephile talks straight to the [GitHub Git data API](https://docs.github.com/en/rest/git) — no local clone of the target repo needed:
 
-1. Resolve the default branch head → its tree.
+1. Resolve the branch head → its tree.
 2. Read `watched.jsonl` at that commit.
 3. Append exactly one JSON line for the watch.
 4. Create blob → tree → **one commit**, authored with your configured name/email and the watch date.
@@ -106,12 +116,12 @@ A season mark simply runs that loop once per episode in order, each commit build
 ## Development
 
 ```bash
-npm test          # unit tests (no network: GitHub API is mocked)
+npm test          # unit tests (no network: GitHub API + fetch are mocked)
 npm run typecheck # tsc for server + client
 npm run dev       # Express (tsx watch) + Vite
 ```
 
-Layout: `server/` is the Node/TypeScript API (credentials stay server-side; the browser never sees tokens), `src/` is the React frontend, `tests/` holds the unit tests. The 3D cupboard lives in `src/pages/Cupboard.tsx` with generated fallback covers in `src/lib/covers.ts`; if WebGL is unavailable the page falls back to a flat grid.
+Layout: `server/` is the Node/TypeScript API (credentials stay server-side), `src/` is the React frontend, `tests/` holds the unit tests. The 3D closet lives in `src/pages/Cupboard.tsx` with generated art in `src/lib/covers.ts` (fallback sleeves, Criterion-style spines from artwork colors, procedural wood grain); if WebGL is unavailable the page falls back to a flat grid.
 
 ## License
 
