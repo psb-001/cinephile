@@ -192,6 +192,12 @@ function SeriesWatchPanel({
   );
 
   useEffect(() => {
+    setSeasonNumber(null);
+    setSeason(null);
+    setSeasonError(null);
+  }, [detail.id]);
+
+  useEffect(() => {
     if (seasons.length > 0 && seasonNumber === null) {
       setSeasonNumber(seasons[0].season_number);
     }

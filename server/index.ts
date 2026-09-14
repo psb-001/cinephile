@@ -30,6 +30,7 @@ import {
   demoSeasonDetail,
   demoTvDetail,
 } from './demo.js';
+import { formatEpisodeCommitMessage, formatMovieCommitMessage } from './commitMessages.js';
 import {
   buildEpisodeEntry,
   buildMovieEntry,
@@ -339,7 +340,7 @@ app.post('/api/watch/movie', requireSetup, async (req, res) => {
     if (DEMO) {
       const entry = buildMovieEntry({ ...body, type: 'movie' });
       demoAppendEntry(entry);
-      res.json({ ok: true, commitSha: demoFakeSha(), message: `Watched: ${entry.title} (${entry.year})` });
+      res.json({ ok: true, commitSha: demoFakeSha(), message: formatMovieCommitMessage(entry.title, entry.year) });
       return;
     }
     const setup = res.locals.setup as ResolvedSetup;
@@ -361,7 +362,11 @@ app.post('/api/watch/episode', requireSetup, async (req, res) => {
     if (DEMO) {
       const entry = buildEpisodeEntry({ ...body, type: 'tv' });
       demoAppendEntry(entry);
-      res.json({ ok: true, commitSha: demoFakeSha(), message: 'ok' });
+      res.json({
+        ok: true,
+        commitSha: demoFakeSha(),
+        message: formatEpisodeCommitMessage(entry.title, entry.season!, entry.episode!, entry.episode_title ?? ''),
+      });
       return;
     }
     const setup = res.locals.setup as ResolvedSetup;
@@ -385,7 +390,8 @@ app.post('/api/watch/season', requireSetup, async (req, res) => {
   }
   try {
     if (DEMO) {
-      for (const ep of [...body.episodes].sort((a, b) => a.episode - b.episode)) {
+      const ordered = [...body.episodes].sort((a, b) => a.episode - b.episode);
+      for (const ep of ordered) {
         demoAppendEntry(
           buildEpisodeEntry({
             ...body,
@@ -397,7 +403,11 @@ app.post('/api/watch/season', requireSetup, async (req, res) => {
         );
       }
       res.json({
-        results: body.episodes.map(() => ({ ok: true, commitSha: demoFakeSha(), message: 'ok' })),
+        results: ordered.map((ep) => ({
+          ok: true,
+          commitSha: demoFakeSha(),
+          message: formatEpisodeCommitMessage(body.title, body.season, ep.episode, ep.episode_title),
+        })),
         total: body.episodes.length,
         succeeded: body.episodes.length,
         failed: 0,
