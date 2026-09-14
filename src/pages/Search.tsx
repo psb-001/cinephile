@@ -24,6 +24,7 @@ export function SearchPage() {
       setResults([]);
       setSearched(false);
       setError(null);
+      setLoading(false);
       if (params.get('q')) setParams({}, { replace: true });
       return;
     }

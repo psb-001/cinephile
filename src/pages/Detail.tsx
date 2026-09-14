@@ -25,6 +25,7 @@ export function DetailPage({ type }: { type: 'movie' | 'tv' }) {
     setLoading(true);
     setError(null);
     setDetail(null);
+    setPosterFailed(false);
     const fetcher = type === 'movie' ? api.movieDetail(numericId) : api.tvDetail(numericId);
     fetcher
       .then((d) => {

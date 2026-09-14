@@ -35,7 +35,9 @@ function normalizeWatchedAt(watchedAt: string | undefined): string {
   if (Number.isNaN(d.getTime())) {
     throw new Error(`Invalid watched_at date: ${watchedAt}`);
   }
-  if (d.getTime() > Date.now()) {
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+  if (d.getTime() > endOfToday.getTime()) {
     throw new Error(`watched_at cannot be in the future: ${watchedAt}`);
   }
   return d.toISOString();
