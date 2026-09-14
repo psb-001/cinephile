@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './AppContext.js';
 import { HomePage } from './pages/Home.js';
 import { SearchPage } from './pages/Search.js';
@@ -96,7 +96,7 @@ function Shell() {
             }
           />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="*" element={<RedirectSettings />} />
+          <Route path="*" element={unconfigured ? <Navigate to="/settings" replace /> : <Navigate to="/" replace />} />
         </Routes>
       </main>
 
@@ -120,8 +120,5 @@ function Shell() {
 }
 
 function RedirectSettings() {
-  useEffect(() => {
-    window.location.replace('/settings');
-  }, []);
-  return null;
+  return <Navigate to="/settings" replace />;
 }

@@ -46,6 +46,7 @@ export function HomePage() {
 
   const recentlyWatched = useMemo(() => {
     const items = toCollection(library)
+      .sort((a, b) => (a.lastWatchedAt < b.lastWatchedAt ? 1 : -1))
       .slice(0, 20)
       .map<TmdbSearchResult>((c) => ({
         id: c.tmdb_id,

@@ -250,6 +250,7 @@ function SeriesWatchPanel({
   const watchedCount = season ? season.episodes.filter(episodeWatched).length : 0;
   const allWatched = season ? season.episodes.length > 0 && watchedCount === season.episodes.length : false;
   const unwatchedEpisodes = season ? season.episodes.filter((e) => !episodeWatched(e)) : [];
+  const previewEpisode = unwatchedEpisodes[0] ?? season?.episodes[0];
 
   const markEpisode = async (ep: TmdbEpisode) => {
     watch.setBusy(true);
@@ -367,7 +368,8 @@ function SeriesWatchPanel({
               <p className="commit-preview">
                 Each episode is its own commit:{' '}
                 <code>
-                  Watched: {detail.title} S{String(season.season_number).padStart(2, '0')}E01 - …
+                  Watched: {detail.title} S{String(season.season_number).padStart(2, '0')}E
+                  {previewEpisode ? String(previewEpisode.episode_number).padStart(2, '0') : '01'} - …
                 </code>
               </p>
 
