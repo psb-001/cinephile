@@ -115,7 +115,7 @@ export async function markSeasonWatched(
     return {
       results: episodes.map((ep) => ({
         ok: false,
-        message: formatEpisodeCommitMessage(ep.title, ep.season, ep.episode, ep.episode_title),
+        message: formatEpisodeCommitMessage(ep.title ?? '', ep.season, ep.episode, ep.episode_title ?? ''),
         error,
       })),
       total: episodes.length,
