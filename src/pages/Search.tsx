@@ -14,11 +14,13 @@ export function SearchPage() {
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(Boolean(params.get('q')));
   const debounceRef = useRef<number | null>(null);
+  const seqRef = useRef(0);
 
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     const q = query.trim();
     if (!q) {
+      seqRef.current += 1;
       setResults([]);
       setSearched(false);
       setError(null);
@@ -26,18 +28,21 @@ export function SearchPage() {
       return;
     }
     debounceRef.current = window.setTimeout(async () => {
+      const my = (seqRef.current += 1);
       setLoading(true);
       setError(null);
       try {
         const { results } = await api.search(q);
+        if (my !== seqRef.current) return;
         setResults(results);
         setSearched(true);
         setParams({ q }, { replace: true });
       } catch (err) {
+        if (my !== seqRef.current) return;
         setError(err instanceof Error ? err.message : String(err));
         setResults([]);
       } finally {
-        setLoading(false);
+        if (my === seqRef.current) setLoading(false);
       }
     }, 350);
     return () => {

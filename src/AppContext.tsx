@@ -15,6 +15,7 @@ export interface Toast {
 interface AppContextValue {
   config: ConfigStatus | null;
   configLoading: boolean;
+  refreshConfig: () => Promise<void>;
   library: WatchedEntry[];
   libraryLoading: boolean;
   libraryError: string | null;
@@ -43,6 +44,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .then(setConfig)
       .catch(() => setConfig({ configured: false }))
       .finally(() => setConfigLoading(false));
+  }, []);
+
+  const refreshConfig = useCallback(async () => {
+    try {
+      setConfig(await api.config());
+    } catch {
+      setConfig({ configured: false });
+    }
   }, []);
 
   const refreshLibrary = useCallback(async () => {
@@ -108,12 +117,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       libraryLoading,
       libraryError,
       watchedKeys,
+      refreshConfig,
       refreshLibrary,
       toasts,
       pushToast,
       dismissToast,
     }),
-    [config, configLoading, library, libraryLoading, libraryError, watchedKeys, refreshLibrary, toasts, pushToast, dismissToast],
+    [config, configLoading, library, libraryLoading, libraryError, watchedKeys, refreshConfig, refreshLibrary, toasts, pushToast, dismissToast],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

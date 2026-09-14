@@ -15,7 +15,7 @@ const TOKEN_HELP = 'https://github.com/settings/tokens/new?scopes=repo&descripti
 const TMDB_HELP = 'https://www.themoviedb.org/settings/api';
 
 export function SettingsPage() {
-  const { config, configLoading, pushToast } = useApp();
+  const { config, configLoading, pushToast, refreshConfig } = useApp();
   const [form, setForm] = useState<FormState | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [validating, setValidating] = useState(false);
@@ -53,6 +53,7 @@ export function SettingsPage() {
             ` (branch: ${result.github?.defaultBranch ?? 'main'})`,
         );
         setForm(null); // re-read masked config next render
+        await refreshConfig();
         pushToast({ kind: 'success', message: 'Settings saved and validated.' });
       } else {
         setErrors(result.errors ?? { _: 'Validation failed.' });
