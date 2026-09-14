@@ -125,9 +125,9 @@ export async function markSeasonWatched(
   }
 
   for (const ep of episodes) {
-    const entry = buildEpisodeEntry(ep);
-    const message = formatEpisodeCommitMessage(entry.title, entry.season!, entry.episode!, entry.episode_title ?? '');
     try {
+      const entry = buildEpisodeEntry(ep);
+      const message = formatEpisodeCommitMessage(entry.title, entry.season!, entry.episode!, entry.episode_title ?? '');
       const newContent = appendEntry(content, entry);
       const blobSha = await api.createBlob(owner, repo, newContent);
       const newTreeSha = await api.createTree(owner, repo, treeSha, WATCHED_FILE, blobSha);
@@ -142,7 +142,11 @@ export async function markSeasonWatched(
       content = newContent;
       results.push({ ok: true, commitSha, message });
     } catch (err) {
-      results.push({ ok: false, message, error: errorMessage(err) });
+      results.push({
+        ok: false,
+        message: formatEpisodeCommitMessage(ep.title ?? '', ep.season, ep.episode, ep.episode_title ?? ''),
+        error: errorMessage(err),
+      });
       break; // stop on first failure; keep results so far
     }
   }

@@ -44,7 +44,7 @@ import {
   markSeasonWatched,
   readLibrary,
 } from './watchedService.js';
-import type { WatchedEntry } from './types.js';
+import type { WatchedEntry, WatchCommitResult } from './types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || process.env.CINEPHILE_API_PORT || 8787);
@@ -417,26 +417,39 @@ app.post('/api/watch/season', requireSetup, async (req, res) => {
   try {
     if (DEMO) {
       const ordered = [...body.episodes].sort((a, b) => a.episode - b.episode);
+      const results: WatchCommitResult[] = [];
       for (const ep of ordered) {
-        demoAppendEntry(
-          buildEpisodeEntry({
-            ...body,
-            type: 'tv',
-            season: body.season,
-            episode: ep.episode,
-            episode_title: ep.episode_title,
-          }),
-        );
+        try {
+          demoAppendEntry(
+            buildEpisodeEntry({
+              ...body,
+              type: 'tv',
+              season: body.season,
+              episode: ep.episode,
+              episode_title: ep.episode_title,
+            }),
+          );
+          results.push({
+            ok: true,
+            commitSha: demoFakeSha(),
+            message: formatEpisodeCommitMessage(body.title, body.season, ep.episode, ep.episode_title),
+          });
+        } catch (err) {
+          results.push({
+            ok: false,
+            message: formatEpisodeCommitMessage(body.title ?? '', body.season, ep.episode, ep.episode_title ?? ''),
+            error: errorMessage(err),
+          });
+          break;
+        }
       }
-      res.json({
-        results: ordered.map((ep) => ({
-          ok: true,
-          commitSha: demoFakeSha(),
-          message: formatEpisodeCommitMessage(body.title, body.season, ep.episode, ep.episode_title),
-        })),
+      const succeeded = results.filter((r) => r.ok).length;
+      const failed = results.filter((r) => !r.ok).length;
+      res.status(failed > 0 && succeeded === 0 ? 502 : 200).json({
+        results,
         total: body.episodes.length,
-        succeeded: body.episodes.length,
-        failed: 0,
+        succeeded,
+        failed,
       });
       return;
     }
