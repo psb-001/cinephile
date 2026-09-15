@@ -1,0 +1,7 @@
+# Canonical checks for cinephile. Pinned here so both the local no-mistakes
+# gate (after this file reaches the default branch) and the generated
+# .github/workflows/ci.yml run the same validation.
+commands:
+  prepare: "npm ci"
+  test: "npm test"
+  lint: "npm run typecheck"

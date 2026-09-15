@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local configuration (contains secrets - never commit)
+config.json
+.env
+.env.*
+
+# Demo / local caches
+.cache/
+
+# OS / editor
+.DS_Store
+*.log

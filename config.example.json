@@ -1,0 +1,14 @@
+{
+  "github": {
+    "token": "ghp_your_personal_access_token_with_repo_scope",
+    "repo": "your-username/watched",
+    "branch": "main"
+  },
+  "commitAuthor": {
+    "name": "Your Name",
+    "email": "you@example.com"
+  },
+  "tmdb": {
+    "apiKey": "your_tmdb_v3_api_key"
+  }
+}
